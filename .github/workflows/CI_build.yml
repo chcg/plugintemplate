@@ -43,3 +43,38 @@ jobs:
       with:
           name: plugin_dll_arm64
           path: arm64\NppPluginTemplate.dll
+
+
+  build_windows_msys2:
+
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_configuration: [Release, Debug]
+        build_platform: [x86_64, i686]
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Make plugin dll
+      working-directory: .\
+      run: |
+        Write-host "${{ matrix.build_platform }}"
+        Write-host "${{ matrix.build_configuration }}"
+        $Env:Path = 'C:\msys64\usr\bin' + [IO.Path]::PathSeparator + $Env:Path
+        if ( $${{ matrix.build_platform == 'i686'}} ) {$Env:MSYSTEM = 'MINGW32'}
+        if ( $${{ matrix.build_platform == 'i686'}} ) {$Env:Path = 'C:\msys64\mingw32\bin' + [IO.Path]::PathSeparator + $Env:Path}
+        if ( $${{ matrix.build_platform == 'x86_64'}} ) {$Env:MSYSTEM = 'MINGW64'}
+        if ( $${{ matrix.build_platform == 'x86_64'}} ) {$Env:Path = 'C:\msys64\mingw64\bin' + [IO.Path]::PathSeparator + $Env:Path}
+        if ( $${{ matrix.build_configuration == 'Debug'}} ) {$Env:DEBUG = '1'}
+        bash -lc "pacman --noconfirm -Syuu"
+        bash -lc "pacman --noconfirm -Syuu"
+        if ( $${{ matrix.build_platform == 'i686'}} ) {bash -lc "pacman --noconfirm -S mingw-w64-i686-gcc mingw-w64-i686-make"}
+        if ( $${{ matrix.build_platform == 'x86_64'}} ) {bash -lc "pacman --noconfirm -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make"}
+        Write-Output "Tools version:"
+        Write-Output (((gcc --version) | select-object -first 1) + " " + (gcc -dumpmachine))
+        Write-Output (mingw32-make --version) | select-object -first 1
+        Write-Output (sh --version) | select-object -first 1
+        mingw32-make -f gcc\makefile
